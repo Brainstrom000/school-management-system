@@ -1,0 +1,105 @@
+@extends('adminlte::page')
+
+@section('title', 'Dashboard')
+
+@section('content_header')
+    <h1>School Management Dashboard</h1>
+@stop
+
+@section('content')
+
+<div class="row">
+
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-info">
+            <div class="inner">
+                <h3>{{ $studentsCount }}</h3>
+                <p>Total Students</p>
+            </div>
+            <div class="icon">
+                <i class="fas fa-user-graduate"></i>
+            </div>
+            <a href="{{ route('students.index') }}" class="small-box-footer">
+                More info <i class="fas fa-arrow-circle-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-success">
+            <div class="inner">
+                <h3>{{ $teachersCount }}</h3>
+                <p>Total Teachers</p>
+            </div>
+            <div class="icon">
+                <i class="fas fa-chalkboard-teacher"></i>
+            </div>
+            <a href="{{ route('teachers.index') }}" class="small-box-footer">
+                More info <i class="fas fa-arrow-circle-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-warning">
+            <div class="inner">
+                <h3>{{ $classesCount }}</h3>
+                <p>Total Classes</p>
+            </div>
+            <div class="icon">
+                <i class="fas fa-school"></i>
+            </div>
+            <a href="{{ route('classes.index') }}" class="small-box-footer">
+                More info <i class="fas fa-arrow-circle-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-primary">
+            <div class="inner">
+                <h3>{{ $subjectsCount }}</h3>
+                <p>Total Subjects</p>
+            </div>
+            <div class="icon">
+                <i class="fas fa-book"></i>
+            </div>
+            <a href="{{ route('subjects.index') }}" class="small-box-footer">
+                More info <i class="fas fa-arrow-circle-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-danger">
+            <div class="inner">
+                <h3>{{ $attendanceCount }}</h3>
+                <p>Total Attendance Records</p>
+            </div>
+            <div class="icon">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <a href="{{ route('attendances.index') }}" class="small-box-footer">
+                More info <i class="fas fa-arrow-circle-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-secondary">
+            <div class="inner">
+                <h3>{{ $marksCount }}</h3>
+                <p>Total Marks Records</p>
+            </div>
+            <div class="icon">
+                <i class="fas fa-award"></i>
+            </div>
+            <a href="{{ route('marks.index') }}" class="small-box-footer">
+                More info <i class="fas fa-arrow-circle-right"></i>
+            </a>
+        </div>
+    </div>
+
+</div>
+
+@stop
