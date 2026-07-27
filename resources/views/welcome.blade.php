@@ -1,9 +1,14 @@
 <!DOCTYPE html>
+@php
+    // Hardcoded on purpose — doesn't depend on the APP_NAME env var being
+    // set correctly on the server, so it can never fall back to "Laravel".
+    $siteName = 'School Management System';
+@endphp
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'School Management System') }}</title>
+    <title>{{ $siteName }}</title>
  
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet" />
@@ -241,14 +246,13 @@
  
     <nav class="nav">
         <div class="brand">
-            <div class="brand-badge">{{ Str::of(config('app.name', 'SMS'))->explode(' ')->map(fn($w) => strtoupper($w[0] ?? ''))->take(2)->implode('') }}</div>
-            {{ config('app.name', 'School Management System') }}
+            <div class="brand-badge">{{ Str::of($siteName)->explode(' ')->map(fn($w) => strtoupper($w[0] ?? ''))->take(2)->implode('') }}</div>
+            {{ $siteName }}
         </div>
         <div class="nav-links" style="display:flex; align-items:center;">
             @if (Route::has('login'))
                 @auth
-                    <a href="{{ url('/dashboard') }}">Dashboard</a>
-                    <a href="{{ route('login') }}" class="nav-btn">Go to Portal</a>
+                    <a href="{{ url('/dashboard') }}" class="nav-btn">Go to Dashboard</a>
                 @else
                     <a href="{{ route('login') }}" class="nav-btn">Portal Login</a>
                 @endauth
@@ -264,7 +268,11 @@
                 <p>One platform for admissions, attendance, fees, results and communication — built to handle everything from a single classroom to thousands of students, reliably and fast.</p>
                 <div class="hero-actions">
                     @if (Route::has('login'))
-                        <a href="{{ route('login') }}" class="btn-primary-hero">Portal Login →</a>
+                        @auth
+                            <a href="{{ url('/dashboard') }}" class="btn-primary-hero">Go to Dashboard →</a>
+                        @else
+                            <a href="{{ route('login') }}" class="btn-primary-hero">Portal Login →</a>
+                        @endauth
                     @endif
                     <a href="#features" class="btn-outline-hero">Explore Features</a>
                 </div>
@@ -343,7 +351,7 @@
  
     <footer>
         <div class="footer-inner">
-            <div class="footer-brand">{{ config('app.name', 'School Management System') }}</div>
+            <div class="footer-brand">{{ $siteName }}</div>
             <div class="footer-links">
                 <a href="#features">Features</a>
                 <a href="#contact">Contact</a>
@@ -352,7 +360,7 @@
                 @endif
             </div>
         </div>
-        <div class="footer-copy">&copy; {{ date('Y') }} {{ config('app.name', 'School Management System') }}. All rights reserved.</div>
+        <div class="footer-copy">&copy; {{ date('Y') }} {{ $siteName }}. All rights reserved.</div>
     </footer>
  
 </body>
