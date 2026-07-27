@@ -13,25 +13,102 @@ use App\Http\Controllers\ActivityLogController;
 
 class StudentController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $students = Student::with('user');
+        return view('students.index');
+    }
 
-        if ($request->search) {
-            $students->whereHas('user', function ($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->search . '%');
+    /**
+     * Server-side AJAX source for the Students DataTable.
+     *
+     * Handles searching, column sorting, and pagination entirely on the
+     * server so the client only ever receives the current page of rows.
+     */
+    public function datatable(Request $request)
+    {
+        // Index must match the column order defined in the DataTable JS config
+        $columns = ['id', 'image', 'name', 'email', 'phone', 'address', 'class', 'action'];
+
+        $query = Student::query()->with('user');
+
+        $recordsTotal = (clone $query)->count();
+
+        // Global search (DataTables sends it as search[value])
+        if ($search = $request->input('search.value')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('phone', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%")
+                    ->orWhere('class', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($u) use ($search) {
+                        $u->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
-        if ($request->class) {
-            $students->where('class', $request->class);
+        $recordsFiltered = (clone $query)->count();
+
+        // Column sorting
+        $orderColumnIndex = (int) $request->input('order.0.column', 0);
+        $orderDir = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
+        $orderColumn = $columns[$orderColumnIndex] ?? 'id';
+
+        if (in_array($orderColumn, ['image', 'action'])) {
+            $orderColumn = 'id';
         }
 
-        $students = $students->latest()
-            ->paginate(10)
-            ->withQueryString();
+        if (in_array($orderColumn, ['name', 'email'])) {
+            $query->join('users', 'users.id', '=', 'students.user_id')
+                ->orderBy("users.{$orderColumn}", $orderDir)
+                ->select('students.*');
+        } else {
+            $query->orderBy($orderColumn, $orderDir);
+        }
 
-        return view('students.index', compact('students'));
+        // Pagination
+        $start = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+
+        if ($length === -1) {
+            $students = $query->get();
+        } else {
+            $students = $query->skip($start)->take($length)->get();
+        }
+
+        $data = $students->map(function ($student) {
+            $image = $student->profile_image
+                ? '<img src="' . asset('students/' . $student->profile_image) . '" width="45" height="45" class="rounded-circle">'
+                : '<span class="text-muted">No Image</span>';
+
+            $actions = '
+                <a href="' . route('students.show', $student->id) . '" class="btn btn-info btn-sm">View</a>
+                <a href="' . route('students.edit', $student->id) . '" class="btn btn-warning btn-sm">Edit</a>
+                <button type="button"
+                    class="btn btn-danger btn-sm ajax-delete-btn"
+                    data-url="' . route('students.destroy', $student->id) . '"
+                    data-confirm="Are you sure you want to delete this student?">
+                    Delete
+                </button>
+            ';
+
+            return [
+                'id' => $student->id,
+                'image' => $image,
+                'name' => e(optional($student->user)->name),
+                'email' => e(optional($student->user)->email),
+                'phone' => e($student->phone),
+                'address' => e($student->address),
+                'class' => e($student->class),
+                'action' => $actions,
+            ];
+        });
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     public function create()
@@ -166,6 +243,13 @@ class StudentController extends Controller
             'Delete',
             'Student "' . $student->user->name . '" moved to trash.'
         );
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Student moved to Trash Successfully',
+            ]);
+        }
 
         return redirect()
             ->route('students.index')

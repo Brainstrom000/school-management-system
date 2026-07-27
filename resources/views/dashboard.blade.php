@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="{{ asset('star/assets/vendors/ti-icons/css/themify-icons.css') }}">
     <link rel="stylesheet" href="{{ asset('star/assets/vendors/css/vendor.bundle.base.css') }}">
     <link rel="stylesheet" href="{{ asset('star/assets/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/app-theme.css') }}">
     <link rel="shortcut icon" href="{{ asset('star/assets/images/favicon.png') }}">
 </head>
 <body class="with-welcome-text">
@@ -33,17 +34,34 @@
             </div>
         </div>
         <div class="navbar-menu-wrapper d-flex align-items-top">
-            <ul class="navbar-nav">
-                <li class="nav-item fw-semibold d-none d-lg-block ms-0">
-                    @php
-                        $hour = now()->format('H');
-                        $greeting = $hour < 12 ? 'Good Morning' : ($hour < 17 ? 'Good Afternoon' : 'Good Evening');
-                    @endphp
-                    <h1 class="welcome-text">{{ $greeting }}, <span class="text-black fw-bold">{{ auth()->user()->name }}</span></h1>
-                    <h3 class="welcome-sub-text">{{ ucfirst(auth()->user()->role) }} &middot; {{ now()->format('l, d M Y') }}</h3>
-                </li>
-            </ul>
+            <ul class="navbar-nav"></ul>
             <ul class="navbar-nav ms-auto">
+                @php
+                    $navNotices = \App\Models\Notice::visibleTo(auth()->user())->latest()->take(5)->get();
+                @endphp
+                <li class="nav-item dropdown d-none d-lg-block notice-bell-dropdown">
+                    <a class="nav-link" id="NoticeBellDropdown" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="mdi mdi-bell-outline" style="font-size:1.4rem;"></i>
+                        @if($navNotices->count())
+                            <span class="notice-bell-badge">{{ $navNotices->count() }}</span>
+                        @endif
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right navbar-dropdown notice-bell-menu" aria-labelledby="NoticeBellDropdown">
+                        <div class="dropdown-header d-flex align-items-center justify-content-between">
+                            <span class="fw-semibold">Notices</span>
+                            <a href="{{ route('notices.index') }}" class="small">View all</a>
+                        </div>
+                        @forelse($navNotices as $notice)
+                            <a class="dropdown-item notice-bell-item" href="{{ route('notices.index') }}">
+                                <p class="mb-0 fw-semibold">{{ $notice->title }}</p>
+                                <p class="mb-0 small text-muted">{{ \Illuminate\Support\Str::limit($notice->message, 60) }}</p>
+                                <p class="mb-0 small text-muted">{{ $notice->created_at->diffForHumans() }}</p>
+                            </a>
+                        @empty
+                            <span class="dropdown-item text-muted">No notices yet.</span>
+                        @endforelse
+                    </div>
+                </li>
                 <li class="nav-item dropdown d-none d-lg-block user-dropdown">
                     <a class="nav-link" id="UserDropdown" href="#" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
@@ -152,6 +170,12 @@
 
                 <li class="nav-item nav-category">Account</li>
                 <li class="nav-item">
+                    <a class="nav-link" href="{{ route('notices.index') }}">
+                        <i class="menu-icon mdi mdi-bullhorn-outline"></i>
+                        <span class="menu-title">Notices</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="{{ route('profile.edit') }}">
                         <i class="menu-icon mdi mdi-account-circle-outline"></i>
                         <span class="menu-title">My Profile</span>
@@ -163,62 +187,95 @@
         <div class="main-panel">
             <div class="content-wrapper">
 
+                {{-- Recent Notices — visible to every role --}}
+                @php
+                    $dashboardNotices = \App\Models\Notice::visibleTo(auth()->user())->latest()->take(3)->get();
+                @endphp
+                @if($dashboardNotices->count())
+                    <div class="card card-rounded grid-margin notice-widget">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h4 class="card-title card-title-dash mb-0"><i class="mdi mdi-bullhorn-outline"></i> Recent Notices</h4>
+                                <a href="{{ route('notices.index') }}" class="small text-primary">View all <i class="mdi mdi-arrow-right"></i></a>
+                            </div>
+                            @foreach($dashboardNotices as $notice)
+                                <div class="notice-widget-item">
+                                    <p class="mb-0 fw-semibold">{{ $notice->title }}</p>
+                                    <p class="mb-0 small text-muted">{{ \Illuminate\Support\Str::limit($notice->message, 100) }} &middot; {{ $notice->created_at->diffForHumans() }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 @if(auth()->user()->role === 'admin')
+                    {{-- Welcome banner --}}
+                    @php
+                        $hour = now()->format('H');
+                        $greeting = $hour < 12 ? 'Good Morning' : ($hour < 17 ? 'Good Afternoon' : 'Good Evening');
+                    @endphp
+                    <div class="welcome-banner grid-margin">
+                        <div class="welcome-banner-text">
+                            <h2>{{ $greeting }}, {{ auth()->user()->name }} <span class="wave">👋</span></h2>
+                            <p>Here's what's happening in your school today — {{ now()->format('l, d M Y') }}</p>
+                        </div>
+                    </div>
+
                     {{-- Stat cards --}}
                     <div class="row">
                         <div class="col-md-6 col-xl-3 grid-margin stretch-card">
                             <div class="card">
-                                <div class="card-body">
+                                <div class="card-body d-flex flex-column h-100">
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div>
                                             <p class="card-title mb-1">Total Students</p>
                                             <h2 class="mb-0">{{ $studentsCount }}</h2>
                                         </div>
-                                        <div class="bg-gradient-primary rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;"><i class="mdi mdi-account-school-outline text-white" style="font-size:1.5rem;"></i></div>
+                                        <div class="bg-gradient-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:50px;height:50px;"><i class="mdi mdi-account-school-outline text-white" style="font-size:1.5rem;"></i></div>
                                     </div>
-                                    <a href="{{ route('students.index') }}" class="small text-primary">View all <i class="mdi mdi-arrow-right"></i></a>
+                                    <a href="{{ route('students.index') }}" class="small text-primary mt-auto pt-3">View all <i class="mdi mdi-arrow-right"></i></a>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6 col-xl-3 grid-margin stretch-card">
                             <div class="card">
-                                <div class="card-body">
+                                <div class="card-body d-flex flex-column h-100">
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div>
                                             <p class="card-title mb-1">Total Teachers</p>
                                             <h2 class="mb-0">{{ $teachersCount }}</h2>
                                         </div>
-                                        <div class="bg-gradient-success rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;"><i class="mdi mdi-account-tie-outline text-white" style="font-size:1.5rem;"></i></div>
+                                        <div class="bg-gradient-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:50px;height:50px;"><i class="mdi mdi-account-tie-outline text-white" style="font-size:1.5rem;"></i></div>
                                     </div>
-                                    <a href="{{ route('teachers.index') }}" class="small text-success">View all <i class="mdi mdi-arrow-right"></i></a>
+                                    <a href="{{ route('teachers.index') }}" class="small text-primary mt-auto pt-3">View all <i class="mdi mdi-arrow-right"></i></a>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6 col-xl-3 grid-margin stretch-card">
                             <div class="card">
-                                <div class="card-body">
+                                <div class="card-body d-flex flex-column h-100">
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div>
                                             <p class="card-title mb-1">Total Classes</p>
                                             <h2 class="mb-0">{{ $classesCount }}</h2>
                                         </div>
-                                        <div class="bg-gradient-warning rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;"><i class="mdi mdi-google-classroom text-white" style="font-size:1.5rem;"></i></div>
+                                        <div class="bg-gradient-warning rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:50px;height:50px;"><i class="mdi mdi-google-classroom text-white" style="font-size:1.5rem;"></i></div>
                                     </div>
-                                    <a href="{{ route('classes.index') }}" class="small text-warning">View all <i class="mdi mdi-arrow-right"></i></a>
+                                    <a href="{{ route('classes.index') }}" class="small text-primary mt-auto pt-3">View all <i class="mdi mdi-arrow-right"></i></a>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6 col-xl-3 grid-margin stretch-card">
                             <div class="card">
-                                <div class="card-body">
+                                <div class="card-body d-flex flex-column h-100">
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div>
                                             <p class="card-title mb-1">Total Subjects</p>
                                             <h2 class="mb-0">{{ $subjectsCount }}</h2>
                                         </div>
-                                        <div class="bg-gradient-danger rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;"><i class="mdi mdi-book-open-page-variant-outline text-white" style="font-size:1.5rem;"></i></div>
+                                        <div class="bg-gradient-danger rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:50px;height:50px;"><i class="mdi mdi-book-open-page-variant-outline text-white" style="font-size:1.5rem;"></i></div>
                                     </div>
-                                    <a href="{{ route('subjects.index') }}" class="small text-danger">View all <i class="mdi mdi-arrow-right"></i></a>
+                                    <a href="{{ route('subjects.index') }}" class="small text-primary mt-auto pt-3">View all <i class="mdi mdi-arrow-right"></i></a>
                                 </div>
                             </div>
                         </div>
@@ -231,8 +288,8 @@
                                 <div class="card-body">
                                     <h4 class="card-title card-title-dash">Attendance Trend (Last 7 Days)</h4>
                                     <p class="card-subtitle card-subtitle-dash">Present / Absent / Leave per day</p>
-                                    <div class="chartjs-bar-wrapper mt-3">
-                                        <canvas id="attendanceTrendChart" height="110"></canvas>
+                                    <div class="chart-container" style="position:relative; height:220px;">
+                                        <canvas id="attendanceTrendChart"></canvas>
                                     </div>
                                 </div>
                             </div>
@@ -243,7 +300,9 @@
                                     <h4 class="card-title card-title-dash">Attendance Summary</h4>
                                     <p class="card-subtitle card-subtitle-dash">Overall breakdown ({{ $attendanceCount }} records)</p>
                                     @if($attendanceCount > 0)
-                                        <canvas id="attendanceSummaryChart"></canvas>
+                                        <div class="chart-container" style="position:relative; height:180px;">
+                                            <canvas id="attendanceSummaryChart"></canvas>
+                                        </div>
                                         <div class="mt-4">
                                             <div class="d-flex justify-content-between mb-2">
                                                 <span><i class="mdi mdi-circle text-success"></i> Present</span>
@@ -266,57 +325,72 @@
                         </div>
                     </div>
 
+                    {{-- Fee Collection --}}
                     <div class="row">
-                        <div class="col-md-6 grid-margin stretch-card">
+                        <div class="col-12 grid-margin stretch-card">
                             <div class="card card-rounded">
-                                <div class="card-body d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <p class="card-title mb-1">Total Attendance Records</p>
-                                        <h3 class="mb-0">{{ $attendanceCount }}</h3>
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <div>
+                                            <h4 class="card-title card-title-dash mb-0">Fee Collection (Last 12 Months)</h4>
+                                            <p class="card-subtitle card-subtitle-dash mb-0">Total collected: Rs. {{ number_format($totalFeesCollected, 2) }}</p>
+                                        </div>
+                                        <span class="text-muted small">Updated {{ now()->format('d M, h:i A') }}</span>
                                     </div>
-                                    <div class="bg-gradient-info rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;"><i class="mdi mdi-calendar-check-outline text-white" style="font-size:1.5rem;"></i></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 grid-margin stretch-card">
-                            <div class="card card-rounded">
-                                <div class="card-body d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <p class="card-title mb-1">Total Marks Records</p>
-                                        <h3 class="mb-0">{{ $marksCount }}</h3>
+                                    <div class="chart-container" style="position:relative; height:180px;">
+                                        <canvas id="feeCollectionChart"></canvas>
                                     </div>
-                                    <div class="bg-gradient-secondary rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;"><i class="mdi mdi-clipboard-text-outline text-white" style="font-size:1.5rem;"></i></div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 grid-margin stretch-card">
-                            <div class="card card-rounded">
-                                <div class="card-body d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <p class="card-title mb-1">Fees Collected</p>
-                                        <h3 class="mb-0 text-success">Rs {{ number_format($totalFeesCollected, 0) }}</h3>
+                        <div class="col-md-4 grid-margin stretch-card">
+                            <div class="card card-rounded stat-card stat-card-blue">
+                                <div class="card-body d-flex flex-column h-100">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <p class="card-title mb-1">Total Attendance Records</p>
+                                            <h3 class="mb-0">{{ $attendanceCount }}</h3>
+                                        </div>
+                                        <div class="stat-icon stat-icon-blue"><i class="mdi mdi-calendar-check-outline"></i></div>
                                     </div>
-                                    <div class="bg-gradient-success rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;"><i class="mdi mdi-cash-check text-white" style="font-size:1.5rem;"></i></div>
+                                    <a href="{{ route('attendances.index') }}" class="small text-primary mt-auto pt-3">View all <i class="mdi mdi-arrow-right"></i></a>
                                 </div>
-                                <a href="{{ route('fees.index') }}?status=paid" class="small text-success">View all <i class="mdi mdi-arrow-right"></i></a>
                             </div>
                         </div>
-                        <div class="col-md-6 grid-margin stretch-card">
-                            <div class="card card-rounded">
-                                <div class="card-body d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <p class="card-title mb-1">Fees Pending</p>
-                                        <h3 class="mb-0 text-danger">Rs {{ number_format($totalFeesPending, 0) }}</h3>
+                        <div class="col-md-4 grid-margin stretch-card">
+                            <div class="card card-rounded stat-card stat-card-indigo">
+                                <div class="card-body d-flex flex-column h-100">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <p class="card-title mb-1">Total Marks Records</p>
+                                            <h3 class="mb-0">{{ $marksCount }}</h3>
+                                        </div>
+                                        <div class="stat-icon stat-icon-indigo"><i class="mdi mdi-clipboard-text-outline"></i></div>
                                     </div>
-                                    <div class="bg-gradient-danger rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;"><i class="mdi mdi-cash-remove text-white" style="font-size:1.5rem;"></i></div>
+                                    <a href="{{ route('marks.index') }}" class="small text-primary mt-auto pt-3">View all <i class="mdi mdi-arrow-right"></i></a>
                                 </div>
-                                <a href="{{ route('fees.index') }}?status=unpaid" class="small text-danger">View all <i class="mdi mdi-arrow-right"></i></a>
+                            </div>
+                        </div>
+                        <div class="col-md-4 grid-margin stretch-card">
+                            <div class="card card-rounded stat-card stat-card-navy">
+                                <div class="card-body d-flex flex-column h-100">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <p class="card-title mb-1">Fee Summary</p>
+                                            <h3 class="mb-0">Rs {{ number_format($totalFeesCollected, 0) }}</h3>
+                                            <p class="small text-muted mb-0">Pending: Rs {{ number_format($totalFeesPending, 0) }}</p>
+                                        </div>
+                                        <div class="stat-icon stat-icon-navy"><i class="mdi mdi-cash-multiple"></i></div>
+                                    </div>
+                                    <a href="{{ route('fees.index') }}" class="small text-primary mt-auto pt-3">View all <i class="mdi mdi-arrow-right"></i></a>
+                                </div>
                             </div>
                         </div>
                     </div>
+
                 @elseif(auth()->user()->role === 'student')
 
                     @if(!$myStudent)
@@ -588,7 +662,7 @@
                 backgroundColor: ['#4caf50', '#f44336', '#ff9800']
             }]
         },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
     });
     @endif
 
@@ -605,10 +679,49 @@
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
             plugins: { legend: { position: 'bottom' } }
         }
     });
+
+    // Fee Collection (last 12 months) — blue gradient bars
+    (function () {
+        var ctx = document.getElementById('feeCollectionChart').getContext('2d');
+        var gradient = ctx.createLinearGradient(0, 0, 0, 180);
+        gradient.addColorStop(0, '#6366f1');
+        gradient.addColorStop(1, '#4f46e5');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {!! json_encode($monthlyFees->pluck('label')) !!},
+                datasets: [{
+                    label: 'Fees Collected (Rs.)',
+                    data: {!! json_encode($monthlyFees->pluck('total')) !!},
+                    backgroundColor: gradient,
+                    borderRadius: 6,
+                    maxBarThickness: 42
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, grid: { color: '#eef2ff' } }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (item) { return 'Rs. ' + item.parsed.y.toLocaleString(); }
+                        }
+                    }
+                }
+            }
+        });
+    })();
 </script>
 @endif
 </body>

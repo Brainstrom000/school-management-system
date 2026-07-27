@@ -13,11 +13,78 @@ class SubjectController extends Controller
      */
     public function index()
     {
-        $subjects = Subject::with('schoolClass')
-            ->latest()
-            ->paginate(10);
+        return view('subjects.index');
+    }
 
-        return view('subjects.index', compact('subjects'));
+    /**
+     * Server-side AJAX source for the Subjects DataTable.
+     */
+    public function datatable(Request $request)
+    {
+        $columns = ['id', 'name', 'class', 'action'];
+
+        $query = Subject::query()->with('schoolClass');
+
+        $recordsTotal = (clone $query)->count();
+
+        if ($search = $request->input('search.value')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhereHas('schoolClass', function ($c) use ($search) {
+                        $c->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $orderColumnIndex = (int) $request->input('order.0.column', 0);
+        $orderDir = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
+        $orderColumn = $columns[$orderColumnIndex] ?? 'id';
+
+        if ($orderColumn === 'class') {
+            $query->join('school_classes', 'school_classes.id', '=', 'subjects.school_class_id')
+                ->orderBy('school_classes.name', $orderDir)
+                ->select('subjects.*');
+        } elseif ($orderColumn === 'action') {
+            $query->orderBy('id', $orderDir);
+        } else {
+            $query->orderBy($orderColumn, $orderDir);
+        }
+
+        $start = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+
+        $subjects = $length === -1
+            ? $query->get()
+            : $query->skip($start)->take($length)->get();
+
+        $data = $subjects->map(function ($subject) {
+            $actions = '
+                <a href="' . route('subjects.show', $subject->id) . '" class="btn btn-info btn-sm">View</a>
+                <a href="' . route('subjects.edit', $subject->id) . '" class="btn btn-warning btn-sm">Edit</a>
+                <button type="button"
+                    class="btn btn-danger btn-sm ajax-delete-btn"
+                    data-url="' . route('subjects.destroy', $subject->id) . '"
+                    data-confirm="Delete this subject?">
+                    Delete
+                </button>
+            ';
+
+            return [
+                'id' => $subject->id,
+                'name' => e($subject->name),
+                'class' => e(optional($subject->schoolClass)->name),
+                'action' => $actions,
+            ];
+        });
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     /**
@@ -94,6 +161,13 @@ class SubjectController extends Controller
     public function destroy(Subject $subject)
     {
         $subject->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Subject Deleted Successfully',
+            ]);
+        }
 
         return redirect()
             ->route('subjects.index')

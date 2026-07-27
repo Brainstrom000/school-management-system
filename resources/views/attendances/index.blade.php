@@ -2,9 +2,19 @@
 
 @section('title', 'Attendance List')
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.css') }}">
+@endpush
+
 @section('content')
 
-<h1>Attendance List</h1>
+<div class="page-header-row">
+    <h1>Attendance List</h1>
+
+    <a href="{{ route('attendances.create') }}" class="btn btn-primary">
+        <i class="mdi mdi-plus"></i> Add Attendance
+    </a>
+</div>
 
 @if(session('success'))
     <div class="alert alert-success">
@@ -15,17 +25,12 @@
 <div class="card">
 
     <div class="card-header">
-
-        <a href="{{ route('attendances.create') }}"
-           class="btn btn-primary">
-            Add Attendance
-        </a>
-
+        <h3 class="card-title mb-0">All Attendance Records</h3>
     </div>
 
     <div class="card-body">
 
-        <table class="table table-bordered">
+        <table id="attendances-table" class="table table-bordered" style="width:100%">
 
             <thead>
                 <tr>
@@ -38,72 +43,34 @@
             </thead>
 
             <tbody>
-
-            @forelse($attendances as $attendance)
-
-                <tr>
-
-                    <td>{{ $attendance->id }}</td>
-
-                    <td>{{ $attendance->student->user->name }}</td>
-
-                    <td>{{ $attendance->date }}</td>
-
-                    <td>
-                        {{ $attendance->status }}
-                    </td>
-
-                    <td>
-
-                        <a href="{{ route('attendances.show', $attendance->id) }}"
-                           class="btn btn-info btn-sm">
-                            View
-                        </a>
-
-                        <a href="{{ route('attendances.edit', $attendance->id) }}"
-                           class="btn btn-warning btn-sm">
-                            Edit
-                        </a>
-
-                        <form action="{{ route('attendances.destroy', $attendance->id) }}"
-                              method="POST"
-                              style="display:inline;">
-
-                            @csrf
-                            @method('DELETE')
-
-                            <button type="submit"
-                                    class="btn btn-danger btn-sm"
-                                    onclick="return confirm('Delete attendance record?')">
-                                Delete
-                            </button>
-
-                        </form>
-
-                    </td>
-
-                </tr>
-
-            @empty
-
-                <tr>
-                    <td colspan="5" class="text-center">
-                        No Attendance Records Found
-                    </td>
-                </tr>
-
-            @endforelse
-
+                {{-- Rows are rendered entirely by DataTables via AJAX --}}
             </tbody>
 
         </table>
-
-        <br>
-
-        {{ $attendances->links() }}
 
     </div>
 
 </div>
 
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('star/assets/vendors/datatables.net/jquery.dataTables.js') }}"></script>
+    <script src="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.js') }}"></script>
+    <script src="{{ asset('js/app-datatable.js') }}"></script>
+
+    <script>
+        $(function () {
+            AppDataTable.init('#attendances-table', {
+                ajaxUrl: @json(route('attendances.datatable')),
+                columns: [
+                    { data: 'id', name: 'id' },
+                    { data: 'student', name: 'student', orderable: false },
+                    { data: 'date', name: 'date' },
+                    { data: 'status', name: 'status' },
+                    { data: 'action', name: 'action', orderable: false, searchable: false }
+                ]
+            });
+        });
+    </script>
+@endpush

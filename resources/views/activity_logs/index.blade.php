@@ -2,9 +2,13 @@
 
 @section('title', 'Activity Logs')
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.css') }}">
+@endpush
+
 @section('content')
 
-<div class="d-flex justify-content-between">
+<div class="page-header-row">
     <h1>Activity Logs</h1>
 </div>
 
@@ -22,7 +26,7 @@
 
     <div class="card-body">
 
-        <table class="table table-bordered table-hover">
+        <table id="activity-logs-table" class="table table-bordered table-hover" style="width:100%">
 
             <thead>
                 <tr>
@@ -37,72 +41,36 @@
             </thead>
 
             <tbody>
-
-                @forelse($logs as $log)
-
-                <tr>
-
-                    <td>{{ $log->id }}</td>
-
-                    <td>{{ $log->user->name ?? 'Deleted User' }}</td>
-
-                    <td>
-                        <span class="badge badge-info">
-                            {{ ucfirst($log->user->role ?? 'N/A') }}
-                        </span>
-                    </td>
-
-                    <td>{{ $log->module }}</td>
-
-                    <td>
-                        @if($log->action == 'Create')
-                            <span class="badge badge-success">Create</span>
-
-                        @elseif($log->action == 'Update')
-                            <span class="badge badge-primary">Update</span>
-
-                        @elseif($log->action == 'Delete')
-                            <span class="badge badge-warning">Delete</span>
-
-                        @elseif($log->action == 'Restore')
-                            <span class="badge badge-info">Restore</span>
-
-                        @elseif($log->action == 'Force Delete')
-                            <span class="badge badge-danger">Force Delete</span>
-
-                        @else
-                            <span class="badge badge-secondary">
-                                {{ $log->action }}
-                            </span>
-                        @endif
-                    </td>
-
-                    <td>{{ $log->description }}</td>
-
-                    <td>{{ $log->created_at->format('d M Y h:i A') }}</td>
-
-                </tr>
-
-                @empty
-
-                <tr>
-                    <td colspan="7" class="text-center">
-                        No Activity Logs Found.
-                    </td>
-                </tr>
-
-                @endforelse
-
+                {{-- Rows are rendered entirely by DataTables via AJAX --}}
             </tbody>
 
         </table>
-
-        <div class="mt-3">
-            {{ $logs->links() }}
-        </div>
 
     </div>
 
 </div>
 
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('star/assets/vendors/datatables.net/jquery.dataTables.js') }}"></script>
+    <script src="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.js') }}"></script>
+    <script src="{{ asset('js/app-datatable.js') }}"></script>
+
+    <script>
+        $(function () {
+            AppDataTable.init('#activity-logs-table', {
+                ajaxUrl: @json(route('activity.logs.datatable')),
+                columns: [
+                    { data: 'id', name: 'id' },
+                    { data: 'user', name: 'user', orderable: false },
+                    { data: 'role', name: 'role', orderable: false, searchable: false },
+                    { data: 'module', name: 'module' },
+                    { data: 'action', name: 'action', searchable: false },
+                    { data: 'description', name: 'description' },
+                    { data: 'created_at', name: 'created_at' }
+                ]
+            });
+        });
+    </script>
+@endpush

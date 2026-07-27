@@ -19,6 +19,7 @@ use App\Http\Controllers\MarkController;
 use App\Http\Controllers\StudentResultController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\FeeController;
+use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\PaypalController;
 use App\Http\Controllers\StripeController;
 
@@ -28,31 +29,66 @@ Route::get('/', function () {
 
 Route::get('/dashboard', function () {
 
-    $studentsCount = Student::count();
-    $teachersCount = Teacher::count();
-    $classesCount = SchoolClass::count();
-    $subjectsCount = Subject::count();
-    $attendanceCount = Attendance::count();
-    $marksCount = Mark::count();
+    // ---- Global stats (same for every admin/teacher/student, changes
+    // rarely from second to second) — cached for 60s so 50k+ rows worth
+    // of counts/sums aren't recomputed on every single page load.
+    $globalStats = \Illuminate\Support\Facades\Cache::remember('dashboard_global_stats', 60, function () {
 
-    $presentCount = Attendance::where('status', 'Present')->count();
-    $absentCount  = Attendance::where('status', 'Absent')->count();
-    $leaveCount   = Attendance::where('status', 'Leave')->count();
+        // One grouped query instead of 21 separate COUNT queries.
+        $trendRows = Attendance::selectRaw('date, status, COUNT(*) as total')
+            ->where('date', '>=', now()->subDays(6)->toDateString())
+            ->groupBy('date', 'status')
+            ->get()
+            ->groupBy('date');
 
-    $totalFeesCollected = \App\Models\Fee::where('status', 'paid')->sum('amount');
-    $totalFeesPending   = \App\Models\Fee::where('status', 'unpaid')->sum('amount');
+        $attendanceTrend = collect(range(6, 0))->map(function ($daysAgo) use ($trendRows) {
+            $date = now()->subDays($daysAgo)->toDateString();
+            $rows = $trendRows->get($date, collect());
 
-    // Attendance trend for last 7 days (used for the chart)
-    $attendanceTrend = collect(range(6, 0))->map(function ($daysAgo) {
-        $date = now()->subDays($daysAgo)->toDateString();
+            return [
+                'label'   => now()->subDays($daysAgo)->format('D'),
+                'present' => (int) optional($rows->firstWhere('status', 'Present'))->total,
+                'absent'  => (int) optional($rows->firstWhere('status', 'Absent'))->total,
+                'leave'   => (int) optional($rows->firstWhere('status', 'Leave'))->total,
+            ];
+        });
+
+        // Fee collection for last 12 months (single grouped query) —
+        // used by the "Fee Collection (Last 12 Months)" chart.
+        $feeRows = \App\Models\Fee::selectRaw("DATE_FORMAT(paid_at, '%Y-%m') as ym, SUM(amount) as total")
+            ->where('status', 'paid')
+            ->whereNotNull('paid_at')
+            ->where('paid_at', '>=', now()->subMonths(11)->startOfMonth())
+            ->groupBy('ym')
+            ->pluck('total', 'ym');
+
+        $monthlyFees = collect(range(11, 0))->map(function ($monthsAgo) use ($feeRows) {
+            $month = now()->subMonths($monthsAgo);
+
+            return [
+                'label' => $month->format('M'),
+                'total' => (float) ($feeRows[$month->format('Y-m')] ?? 0),
+            ];
+        });
 
         return [
-            'label'   => now()->subDays($daysAgo)->format('D'),
-            'present' => Attendance::where('date', $date)->where('status', 'Present')->count(),
-            'absent'  => Attendance::where('date', $date)->where('status', 'Absent')->count(),
-            'leave'   => Attendance::where('date', $date)->where('status', 'Leave')->count(),
+            'studentsCount'      => Student::count(),
+            'teachersCount'      => Teacher::count(),
+            'classesCount'       => SchoolClass::count(),
+            'subjectsCount'      => Subject::count(),
+            'attendanceCount'    => Attendance::count(),
+            'marksCount'         => Mark::count(),
+            'presentCount'       => Attendance::where('status', 'Present')->count(),
+            'absentCount'        => Attendance::where('status', 'Absent')->count(),
+            'leaveCount'         => Attendance::where('status', 'Leave')->count(),
+            'totalFeesCollected' => \App\Models\Fee::where('status', 'paid')->sum('amount'),
+            'totalFeesPending'   => \App\Models\Fee::where('status', 'unpaid')->sum('amount'),
+            'monthlyFees'        => $monthlyFees,
+            'attendanceTrend'    => $attendanceTrend,
         ];
     });
+
+    extract($globalStats);
 
     // ---- Student-specific dashboard data ----
     $myStudent = null;
@@ -107,6 +143,7 @@ Route::get('/dashboard', function () {
         'attendanceTrend',
         'totalFeesCollected',
         'totalFeesPending',
+        'monthlyFees',
         'myStudent',
         'myAttendanceSummary',
         'myOverallPercentage',
@@ -119,6 +156,21 @@ Route::get('/dashboard', function () {
     ));
 
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+/*
+|--------------------------------------------------------------------------
+| Notices — everyone (logged in) can view; only admin can post/delete.
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    Route::get('notices', [NoticeController::class, 'index'])->name('notices.index');
+
+    Route::middleware(['role:admin'])->group(function () {
+        Route::post('notices', [NoticeController::class, 'store'])->name('notices.store');
+        Route::delete('notices/{notice}', [NoticeController::class, 'destroy'])->name('notices.destroy');
+    });
+});
+
 
 
 /*
@@ -134,6 +186,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     | Students
     |--------------------------------------------------------------------------
     */
+
+    Route::get('students-data', [StudentController::class, 'datatable'])
+        ->name('students.datatable');
 
     Route::resource('students', StudentController::class);
 
@@ -153,6 +208,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
+    Route::get('teachers-data', [TeacherController::class, 'datatable'])
+        ->name('teachers.datatable');
+
     Route::resource('teachers', TeacherController::class);
 
     Route::get('teachers-trash', [TeacherController::class, 'trash'])
@@ -171,6 +229,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
+    Route::get('classes-data', [SchoolClassController::class, 'datatable'])
+        ->name('classes.datatable');
+
     Route::resource('classes', SchoolClassController::class);
 
 
@@ -179,6 +240,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     | Subjects
     |--------------------------------------------------------------------------
     */
+
+    Route::get('subjects-data', [SubjectController::class, 'datatable'])
+        ->name('subjects.datatable');
 
     Route::resource('subjects', SubjectController::class);
 
@@ -191,6 +255,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])
         ->name('activity.logs');
+
+    Route::get('/activity-logs-data', [ActivityLogController::class, 'datatable'])
+        ->name('activity.logs.datatable');
 
 
     /*
@@ -216,7 +283,13 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
 Route::middleware(['auth', 'role:teacher'])->group(function () {
 
+    Route::get('attendances-data', [AttendanceController::class, 'datatable'])
+        ->name('attendances.datatable');
+
     Route::resource('attendances', AttendanceController::class);
+
+    Route::get('marks-data', [MarkController::class, 'datatable'])
+        ->name('marks.datatable');
 
     Route::resource('marks', MarkController::class);
 
@@ -246,6 +319,7 @@ Route::middleware(['auth', 'role:student'])->group(function () {
 Route::middleware(['auth'])->group(function () {
 
     Route::get('fees', [FeeController::class, 'index'])->name('fees.index');
+    Route::get('fees-data', [FeeController::class, 'datatable'])->name('fees.datatable');
     Route::get('fees/{fee}', [FeeController::class, 'show'])->name('fees.show');
     Route::get('fees/{fee}/pay', [FeeController::class, 'pay'])->name('fees.pay');
 

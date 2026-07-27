@@ -15,28 +15,85 @@ class TeacherController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index()
     {
-        $teachers = Teacher::with('user');
+        return view('teachers.index');
+    }
 
-        // Search by Teacher Name
-        if ($request->search) {
-            $teachers->whereHas('user', function ($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->search . '%');
+    /**
+     * Server-side AJAX source for the Teachers DataTable.
+     */
+    public function datatable(Request $request)
+    {
+        $columns = ['id', 'name', 'email', 'subject', 'salary', 'action'];
+
+        $query = Teacher::query()->with('user');
+
+        $recordsTotal = (clone $query)->count();
+
+        if ($search = $request->input('search.value')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('subject', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($u) use ($search) {
+                        $u->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
-        // Filter by Subject
-        if ($request->subject) {
-            $teachers->where('subject', 'like', '%' . $request->subject . '%');
+        $recordsFiltered = (clone $query)->count();
+
+        $orderColumnIndex = (int) $request->input('order.0.column', 0);
+        $orderDir = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
+        $orderColumn = $columns[$orderColumnIndex] ?? 'id';
+
+        if ($orderColumn === 'action') {
+            $orderColumn = 'id';
         }
 
-        $teachers = $teachers
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
+        if (in_array($orderColumn, ['name', 'email'])) {
+            $query->join('users', 'users.id', '=', 'teachers.user_id')
+                ->orderBy("users.{$orderColumn}", $orderDir)
+                ->select('teachers.*');
+        } else {
+            $query->orderBy($orderColumn, $orderDir);
+        }
 
-        return view('teachers.index', compact('teachers'));
+        $start = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+
+        $teachers = $length === -1
+            ? $query->get()
+            : $query->skip($start)->take($length)->get();
+
+        $data = $teachers->map(function ($teacher) {
+            $actions = '
+                <a href="' . route('teachers.show', $teacher->id) . '" class="btn btn-info btn-sm">View</a>
+                <a href="' . route('teachers.edit', $teacher->id) . '" class="btn btn-warning btn-sm">Edit</a>
+                <button type="button"
+                    class="btn btn-danger btn-sm ajax-delete-btn"
+                    data-url="' . route('teachers.destroy', $teacher->id) . '"
+                    data-confirm="Move this teacher to Trash?">
+                    Delete
+                </button>
+            ';
+
+            return [
+                'id' => $teacher->id,
+                'name' => e(optional($teacher->user)->name),
+                'email' => e(optional($teacher->user)->email),
+                'subject' => e($teacher->subject),
+                'salary' => e($teacher->salary),
+                'action' => $actions,
+            ];
+        });
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     /**
@@ -155,6 +212,13 @@ class TeacherController extends Controller
             'Delete',
             'Teacher "' . $teacher->user->name . '" moved to trash.'
         );
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Teacher moved to Trash Successfully',
+            ]);
+        }
 
         return redirect()
             ->route('teachers.index')

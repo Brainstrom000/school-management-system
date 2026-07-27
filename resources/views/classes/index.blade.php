@@ -2,9 +2,13 @@
 
 @section('title', 'Classes')
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.css') }}">
+@endpush
+
 @section('content')
 
-<div class="d-flex justify-content-between">
+<div class="page-header-row">
     <h1>Classes List</h1>
 
     <a href="{{ route('classes.create') }}" class="btn btn-primary">
@@ -26,7 +30,7 @@
 
     <div class="card-body">
 
-        <table class="table table-bordered">
+        <table id="classes-table" class="table table-bordered" style="width:100%">
 
             <thead>
                 <tr>
@@ -38,61 +42,33 @@
             </thead>
 
             <tbody>
-
-            @forelse($classes as $class)
-
-                <tr>
-                    <td>{{ $class->id }}</td>
-                    <td>{{ $class->name }}</td>
-                    <td>Rs {{ number_format($class->fee_amount, 0) }}</td>
-
-                    <td>
-                        <a href="{{ route('classes.show', $class) }}"
-                           class="btn btn-info btn-sm">
-                            View
-                        </a>
-
-                        <a href="{{ route('classes.edit', $class) }}"
-                           class="btn btn-warning btn-sm">
-                            Edit
-                        </a>
-
-                        <form action="{{ route('classes.destroy', $class) }}"
-                              method="POST"
-                              style="display:inline;">
-
-                            @csrf
-                            @method('DELETE')
-
-                            <button class="btn btn-danger btn-sm"
-                                    onclick="return confirm('Are you sure?')">
-                                Delete
-                            </button>
-
-                        </form>
-                    </td>
-                </tr>
-
-            @empty
-
-                <tr>
-                    <td colspan="4" class="text-center">
-                        No Classes Found
-                    </td>
-                </tr>
-
-            @endforelse
-
+                {{-- Rows are rendered entirely by DataTables via AJAX --}}
             </tbody>
 
         </table>
-
-        <div class="mt-3">
-            {{ $classes->links() }}
-        </div>
 
     </div>
 
 </div>
 
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('star/assets/vendors/datatables.net/jquery.dataTables.js') }}"></script>
+    <script src="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.js') }}"></script>
+    <script src="{{ asset('js/app-datatable.js') }}"></script>
+
+    <script>
+        $(function () {
+            AppDataTable.init('#classes-table', {
+                ajaxUrl: @json(route('classes.datatable')),
+                columns: [
+                    { data: 'id', name: 'id' },
+                    { data: 'name', name: 'name' },
+                    { data: 'fee_amount', name: 'fee_amount', orderable: false },
+                    { data: 'action', name: 'action', orderable: false, searchable: false }
+                ]
+            });
+        });
+    </script>
+@endpush

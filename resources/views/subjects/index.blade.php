@@ -2,9 +2,19 @@
 
 @section('title', 'Subjects')
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.css') }}">
+@endpush
+
 @section('content')
 
-<h1>Subjects List</h1>
+<div class="page-header-row">
+    <h1>Subjects List</h1>
+
+    <a href="{{ route('subjects.create') }}" class="btn btn-primary">
+        <i class="mdi mdi-plus"></i> Add Subject
+    </a>
+</div>
 
 @if(session('success'))
     <div class="alert alert-success">
@@ -15,17 +25,12 @@
 <div class="card">
 
     <div class="card-header">
-
-        <a href="{{ route('subjects.create') }}"
-           class="btn btn-primary">
-            Add Subject
-        </a>
-
+        <h3 class="card-title mb-0">All Subjects</h3>
     </div>
 
     <div class="card-body">
 
-        <table class="table table-bordered">
+        <table id="subjects-table" class="table table-bordered" style="width:100%">
 
             <thead>
                 <tr>
@@ -37,68 +42,33 @@
             </thead>
 
             <tbody>
-
-                @forelse($subjects as $subject)
-
-                    <tr>
-
-                        <td>{{ $subject->id }}</td>
-
-                        <td>{{ $subject->name }}</td>
-
-                        <td>{{ $subject->schoolClass->name }}</td>
-
-                        <td>
-
-                            <a href="{{ route('subjects.show', $subject->id) }}"
-                               class="btn btn-info btn-sm">
-                                View
-                            </a>
-
-                            <a href="{{ route('subjects.edit', $subject->id) }}"
-                               class="btn btn-warning btn-sm">
-                                Edit
-                            </a>
-
-                            <form action="{{ route('subjects.destroy', $subject->id) }}"
-                                  method="POST"
-                                  style="display:inline;">
-
-                                @csrf
-                                @method('DELETE')
-
-                                <button type="submit"
-                                        class="btn btn-danger btn-sm"
-                                        onclick="return confirm('Delete this subject?')">
-                                    Delete
-                                </button>
-
-                            </form>
-
-                        </td>
-
-                    </tr>
-
-                @empty
-
-                    <tr>
-                        <td colspan="4" class="text-center">
-                            No Subjects Found
-                        </td>
-                    </tr>
-
-                @endforelse
-
+                {{-- Rows are rendered entirely by DataTables via AJAX --}}
             </tbody>
 
         </table>
-
-        <br>
-
-        {{ $subjects->links() }}
 
     </div>
 
 </div>
 
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('star/assets/vendors/datatables.net/jquery.dataTables.js') }}"></script>
+    <script src="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.js') }}"></script>
+    <script src="{{ asset('js/app-datatable.js') }}"></script>
+
+    <script>
+        $(function () {
+            AppDataTable.init('#subjects-table', {
+                ajaxUrl: @json(route('subjects.datatable')),
+                columns: [
+                    { data: 'id', name: 'id' },
+                    { data: 'name', name: 'name' },
+                    { data: 'class', name: 'class' },
+                    { data: 'action', name: 'action', orderable: false, searchable: false }
+                ]
+            });
+        });
+    </script>
+@endpush

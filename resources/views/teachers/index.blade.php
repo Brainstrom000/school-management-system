@@ -2,9 +2,13 @@
 
 @section('title', 'Teachers')
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.css') }}">
+@endpush
+
 @section('content')
 
-<div class="d-flex justify-content-between align-items-center">
+<div class="page-header-row">
 
     <h1>Teachers List</h1>
 
@@ -31,49 +35,12 @@
 <div class="card">
 
     <div class="card-header">
-
-        <form method="GET" action="{{ route('teachers.index') }}">
-
-            <div class="row">
-
-                <div class="col-md-4">
-                    <input type="text"
-                           name="search"
-                           class="form-control"
-                           placeholder="Search Teacher Name"
-                           value="{{ request('search') }}">
-                </div>
-
-                <div class="col-md-4">
-                    <input type="text"
-                           name="subject"
-                           class="form-control"
-                           placeholder="Filter By Subject"
-                           value="{{ request('subject') }}">
-                </div>
-
-                <div class="col-md-2">
-                    <button class="btn btn-primary">
-                        Search
-                    </button>
-                </div>
-
-                <div class="col-md-2">
-                    <a href="{{ route('teachers.index') }}"
-                       class="btn btn-secondary">
-                        Reset
-                    </a>
-                </div>
-
-            </div>
-
-        </form>
-
+        <h3 class="card-title">All Teachers</h3>
     </div>
 
     <div class="card-body">
 
-        <table class="table table-bordered table-hover">
+        <table id="teachers-table" class="table table-bordered table-hover" style="width:100%">
 
             <thead>
                 <tr>
@@ -87,72 +54,35 @@
             </thead>
 
             <tbody>
-
-            @forelse($teachers as $teacher)
-
-                <tr>
-
-                    <td>{{ $teacher->id }}</td>
-
-                    <td>{{ $teacher->user->name }}</td>
-
-                    <td>{{ $teacher->user->email }}</td>
-
-                    <td>{{ $teacher->subject }}</td>
-
-                    <td>{{ $teacher->salary }}</td>
-
-                    <td>
-
-                        <a href="{{ route('teachers.show',$teacher) }}"
-                           class="btn btn-info btn-sm">
-                            View
-                        </a>
-
-                        <a href="{{ route('teachers.edit',$teacher) }}"
-                           class="btn btn-warning btn-sm">
-                            Edit
-                        </a>
-
-                        <form action="{{ route('teachers.destroy',$teacher) }}"
-                              method="POST"
-                              style="display:inline;">
-
-                            @csrf
-                            @method('DELETE')
-
-                            <button type="submit"
-                                    class="btn btn-danger btn-sm"
-                                    onclick="return confirm('Move this teacher to Trash?')">
-                                Delete
-                            </button>
-
-                        </form>
-
-                    </td>
-
-                </tr>
-
-            @empty
-
-                <tr>
-                    <td colspan="6" class="text-center">
-                        No Teachers Found.
-                    </td>
-                </tr>
-
-            @endforelse
-
+                {{-- Rows are rendered entirely by DataTables via AJAX --}}
             </tbody>
 
         </table>
-
-        <div class="mt-3">
-            {{ $teachers->links() }}
-        </div>
 
     </div>
 
 </div>
 
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('star/assets/vendors/datatables.net/jquery.dataTables.js') }}"></script>
+    <script src="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.js') }}"></script>
+    <script src="{{ asset('js/app-datatable.js') }}"></script>
+
+    <script>
+        $(function () {
+            AppDataTable.init('#teachers-table', {
+                ajaxUrl: @json(route('teachers.datatable')),
+                columns: [
+                    { data: 'id', name: 'id' },
+                    { data: 'name', name: 'name' },
+                    { data: 'email', name: 'email' },
+                    { data: 'subject', name: 'subject' },
+                    { data: 'salary', name: 'salary' },
+                    { data: 'action', name: 'action', orderable: false, searchable: false }
+                ]
+            });
+        });
+    </script>
+@endpush

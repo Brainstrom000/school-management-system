@@ -15,11 +15,76 @@ class AttendanceController extends Controller
      */
     public function index()
     {
-        $attendances = Attendance::with('student.user')
-            ->latest()
-            ->paginate(10);
+        return view('attendances.index');
+    }
 
-        return view('attendances.index', compact('attendances'));
+    /**
+     * Server-side AJAX source for the Attendances DataTable.
+     */
+    public function datatable(Request $request)
+    {
+        $columns = ['id', 'student', 'date', 'status', 'action'];
+
+        $query = Attendance::query()->with('student.user');
+
+        $recordsTotal = (clone $query)->count();
+
+        if ($search = $request->input('search.value')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('status', 'like', "%{$search}%")
+                    ->orWhere('date', 'like', "%{$search}%")
+                    ->orWhereHas('student.user', function ($u) use ($search) {
+                        $u->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $orderColumnIndex = (int) $request->input('order.0.column', 0);
+        $orderDir = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
+        $orderColumn = $columns[$orderColumnIndex] ?? 'id';
+
+        if (in_array($orderColumn, ['student', 'action'])) {
+            $orderColumn = 'id';
+        }
+
+        $query->orderBy($orderColumn, $orderDir);
+
+        $start = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+
+        $attendances = $length === -1
+            ? $query->get()
+            : $query->skip($start)->take($length)->get();
+
+        $data = $attendances->map(function ($attendance) {
+            $actions = '
+                <a href="' . route('attendances.show', $attendance->id) . '" class="btn btn-info btn-sm">View</a>
+                <a href="' . route('attendances.edit', $attendance->id) . '" class="btn btn-warning btn-sm">Edit</a>
+                <button type="button"
+                    class="btn btn-danger btn-sm ajax-delete-btn"
+                    data-url="' . route('attendances.destroy', $attendance->id) . '"
+                    data-confirm="Delete attendance record?">
+                    Delete
+                </button>
+            ';
+
+            return [
+                'id' => $attendance->id,
+                'student' => e(optional(optional($attendance->student)->user)->name),
+                'date' => e($attendance->date),
+                'status' => e($attendance->status),
+                'action' => $actions,
+            ];
+        });
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     /**
@@ -126,6 +191,13 @@ class AttendanceController extends Controller
     public function destroy(Attendance $attendance)
     {
         $attendance->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Attendance Deleted Successfully',
+            ]);
+        }
 
         return redirect()
             ->route('attendances.index')

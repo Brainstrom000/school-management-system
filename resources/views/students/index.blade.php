@@ -2,9 +2,13 @@
 
 @section('title', 'Students')
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.css') }}">
+@endpush
+
 @section('content')
 
-<div class="d-flex justify-content-between">
+<div class="page-header-row">
     <h1>Students List</h1>
 
     <a href="{{ route('students.create') }}" class="btn btn-primary">
@@ -26,7 +30,7 @@
 
     <div class="card-body">
 
-        <table class="table table-bordered table-hover">
+        <table id="students-table" class="table table-bordered table-hover" style="width:100%">
 
             <thead>
                 <tr>
@@ -42,87 +46,37 @@
             </thead>
 
             <tbody>
-
-            @forelse($students as $student)
-
-                <tr>
-
-                    <td>{{ $student->id }}</td>
-
-                    <td>
-                        @if($student->profile_image)
-                            <img src="{{ asset('students/'.$student->profile_image) }}"
-                                 width="60"
-                                 height="60"
-                                 class="rounded-circle">
-                        @else
-                            No Image
-                        @endif
-                    </td>
-
-                    <td>{{ $student->user->name }}</td>
-
-                    <td>{{ $student->user->email }}</td>
-
-                    <td>{{ $student->phone }}</td>
-
-                    <td>{{ $student->address }}</td>
-
-                    <td>{{ $student->class }}</td>
-
-                    <td>
-
-                        <a href="{{ route('students.show',$student->id) }}"
-                           class="btn btn-info btn-sm">
-                            View
-                        </a>
-
-                        <a href="{{ route('students.edit',$student->id) }}"
-                           class="btn btn-warning btn-sm">
-                            Edit
-                        </a>
-
-                        <form action="{{ route('students.destroy',$student->id) }}"
-                              method="POST"
-                              style="display:inline-block;">
-
-                            @csrf
-                            @method('DELETE')
-
-                            <button type="submit"
-                                    class="btn btn-danger btn-sm"
-                                    onclick="return confirm('Are you sure you want to delete this student?')">
-
-                                Delete
-
-                            </button>
-
-                        </form>
-
-                    </td>
-
-                </tr>
-
-            @empty
-
-                <tr>
-                    <td colspan="8" class="text-center">
-                        No Students Found
-                    </td>
-                </tr>
-
-            @endforelse
-
+                {{-- Rows are rendered entirely by DataTables via AJAX --}}
             </tbody>
 
         </table>
-
-        <div class="mt-3">
-            {{ $students->links() }}
-        </div>
 
     </div>
 
 </div>
 
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('star/assets/vendors/datatables.net/jquery.dataTables.js') }}"></script>
+    <script src="{{ asset('star/assets/vendors/datatables.net-bs4/dataTables.bootstrap4.js') }}"></script>
+    <script src="{{ asset('js/app-datatable.js') }}"></script>
+
+    <script>
+        $(function () {
+            AppDataTable.init('#students-table', {
+                ajaxUrl: @json(route('students.datatable')),
+                columns: [
+                    { data: 'id', name: 'id' },
+                    { data: 'image', name: 'image', orderable: false, searchable: false },
+                    { data: 'name', name: 'name' },
+                    { data: 'email', name: 'email' },
+                    { data: 'phone', name: 'phone' },
+                    { data: 'address', name: 'address' },
+                    { data: 'class', name: 'class' },
+                    { data: 'action', name: 'action', orderable: false, searchable: false }
+                ]
+            });
+        });
+    </script>
+@endpush

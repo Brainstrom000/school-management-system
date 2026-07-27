@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'School Management System')</title>
 
     <link rel="stylesheet" href="{{ asset('star/assets/vendors/feather/feather.css') }}">
@@ -11,6 +12,7 @@
     <link rel="stylesheet" href="{{ asset('star/assets/vendors/font-awesome/css/font-awesome.min.css') }}">
     <link rel="stylesheet" href="{{ asset('star/assets/vendors/css/vendor.bundle.base.css') }}">
     <link rel="stylesheet" href="{{ asset('star/assets/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/app-theme.css') }}">
     <link rel="shortcut icon" href="{{ asset('star/assets/images/favicon.png') }}">
     @stack('styles')
 </head>
@@ -42,6 +44,32 @@
                 </li>
             </ul>
             <ul class="navbar-nav ms-auto">
+                @php
+                    $navNotices = \App\Models\Notice::visibleTo(auth()->user())->latest()->take(5)->get();
+                @endphp
+                <li class="nav-item dropdown d-none d-lg-block notice-bell-dropdown">
+                    <a class="nav-link" id="NoticeBellDropdown" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="mdi mdi-bell-outline" style="font-size:1.4rem;"></i>
+                        @if($navNotices->count())
+                            <span class="notice-bell-badge">{{ $navNotices->count() }}</span>
+                        @endif
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right navbar-dropdown notice-bell-menu" aria-labelledby="NoticeBellDropdown">
+                        <div class="dropdown-header d-flex align-items-center justify-content-between">
+                            <span class="fw-semibold">Notices</span>
+                            <a href="{{ route('notices.index') }}" class="small">View all</a>
+                        </div>
+                        @forelse($navNotices as $notice)
+                            <a class="dropdown-item notice-bell-item" href="{{ route('notices.index') }}">
+                                <p class="mb-0 fw-semibold">{{ $notice->title }}</p>
+                                <p class="mb-0 small text-muted">{{ \Illuminate\Support\Str::limit($notice->message, 60) }}</p>
+                                <p class="mb-0 small text-muted">{{ $notice->created_at->diffForHumans() }}</p>
+                            </a>
+                        @empty
+                            <span class="dropdown-item text-muted">No notices yet.</span>
+                        @endforelse
+                    </div>
+                </li>
                 <li class="nav-item dropdown d-none d-lg-block user-dropdown">
                     <a class="nav-link" id="UserDropdown" href="#" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
@@ -153,6 +181,12 @@
                 @endif
 
                 <li class="nav-item nav-category">Account</li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('notices.index') ? 'active' : '' }}" href="{{ route('notices.index') }}">
+                        <i class="menu-icon mdi mdi-bullhorn-outline"></i>
+                        <span class="menu-title">Notices</span>
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('profile.edit') ? 'active' : '' }}" href="{{ route('profile.edit') }}">
                         <i class="menu-icon mdi mdi-account-circle-outline"></i>
