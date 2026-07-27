@@ -1,12 +1,12 @@
 <?php
-
+ 
 namespace App\Http\Controllers;
-
+ 
 use App\Models\Mark;
 use App\Models\Student;
 use App\Models\Subject;
 use Illuminate\Http\Request;
-
+ 
 class MarkController extends Controller
 {
     /**
@@ -16,18 +16,18 @@ class MarkController extends Controller
     {
         return view('marks.index');
     }
-
+ 
     /**
      * Server-side AJAX source for the Marks DataTable.
      */
     public function datatable(Request $request)
     {
         $columns = ['id', 'student', 'subject', 'marks', 'total_marks', 'grade', 'action'];
-
+ 
         $query = Mark::query()->with(['student.user', 'subject']);
-
+ 
         $recordsTotal = (clone $query)->count();
-
+ 
         if ($search = $request->input('search.value')) {
             $query->where(function ($q) use ($search) {
                 $q->where('grade', 'like', "%{$search}%")
@@ -39,28 +39,28 @@ class MarkController extends Controller
                     });
             });
         }
-
+ 
         $recordsFiltered = (clone $query)->count();
-
+ 
         $orderColumnIndex = (int) $request->input('order.0.column', 0);
         $orderDir = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
         $orderColumn = $columns[$orderColumnIndex] ?? 'id';
-
+ 
         if (in_array($orderColumn, ['student', 'subject', 'action'])) {
             $orderColumn = 'id';
         }
-
+ 
         $query->orderBy($orderColumn, $orderDir);
-
+ 
         $start = (int) $request->input('start', 0);
         $length = (int) $request->input('length', 10);
-
+ 
         $marks = $length === -1
             ? $query->get()
             : $query->skip($start)->take($length)->get();
-
+ 
         $data = $marks->map(function ($mark) {
-            $actions = '
+            $actions = '<div class="action-buttons">
                 <a href="' . route('marks.show', $mark->id) . '" class="btn btn-info btn-sm">View</a>
                 <a href="' . route('marks.edit', $mark->id) . '" class="btn btn-warning btn-sm">Edit</a>
                 <button type="button"
@@ -69,8 +69,8 @@ class MarkController extends Controller
                     data-confirm="Delete this mark?">
                     Delete
                 </button>
-            ';
-
+            </div>';
+ 
             return [
                 'id' => $mark->id,
                 'student' => e(optional(optional($mark->student)->user)->name ?? 'N/A'),
@@ -81,7 +81,7 @@ class MarkController extends Controller
                 'action' => $actions,
             ];
         });
-
+ 
         return response()->json([
             'draw' => (int) $request->input('draw', 1),
             'recordsTotal' => $recordsTotal,
@@ -89,7 +89,7 @@ class MarkController extends Controller
             'data' => $data,
         ]);
     }
-
+ 
     /**
      * Show the form for creating a new resource.
      */
@@ -97,10 +97,10 @@ class MarkController extends Controller
     {
         $students = Student::with('user')->get();
         $subjects = Subject::all();
-
+ 
         return view('marks.create', compact('students', 'subjects'));
     }
-
+ 
     /**
      * Store a newly created resource in storage.
      */
@@ -112,10 +112,10 @@ class MarkController extends Controller
             'marks'      => 'required|numeric|min:0',
             'total_marks'=> 'required|numeric|min:1',
         ]);
-
+ 
         // Grade Calculate
         $percentage = ($request->marks / $request->total_marks) * 100;
-
+ 
         if ($percentage >= 80) {
             $grade = 'A+';
         } elseif ($percentage >= 70) {
@@ -129,7 +129,7 @@ class MarkController extends Controller
         } else {
             $grade = 'F';
         }
-
+ 
         Mark::create([
             'student_id' => $request->student_id,
             'subject_id' => $request->subject_id,
@@ -137,12 +137,12 @@ class MarkController extends Controller
             'total_marks'=> $request->total_marks,
             'grade'      => $grade,
         ]);
-
+ 
         return redirect()
             ->route('marks.index')
             ->with('success', 'Marks Added Successfully');
     }
-
+ 
     /**
      * Display the specified resource.
      */
@@ -150,7 +150,7 @@ class MarkController extends Controller
     {
         return view('marks.show', compact('mark'));
     }
-
+ 
     /**
      * Show the form for editing the specified resource.
      */
@@ -158,14 +158,14 @@ class MarkController extends Controller
     {
         $students = Student::with('user')->get();
         $subjects = Subject::all();
-
+ 
         return view('marks.edit', compact(
             'mark',
             'students',
             'subjects'
         ));
     }
-
+ 
     /**
      * Update the specified resource in storage.
      */
@@ -177,9 +177,9 @@ class MarkController extends Controller
             'marks'      => 'required|numeric|min:0',
             'total_marks'=> 'required|numeric|min:1',
         ]);
-
+ 
         $percentage = ($request->marks / $request->total_marks) * 100;
-
+ 
         if ($percentage >= 80) {
             $grade = 'A+';
         } elseif ($percentage >= 70) {
@@ -193,7 +193,7 @@ class MarkController extends Controller
         } else {
             $grade = 'F';
         }
-
+ 
         $mark->update([
             'student_id' => $request->student_id,
             'subject_id' => $request->subject_id,
@@ -201,28 +201,34 @@ class MarkController extends Controller
             'total_marks'=> $request->total_marks,
             'grade'      => $grade,
         ]);
-
+ 
         return redirect()
             ->route('marks.index')
             ->with('success', 'Marks Updated Successfully');
     }
-
+ 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(Mark $mark)
     {
         $mark->delete();
-
+ 
         if (request()->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Marks Deleted Successfully',
             ]);
         }
-
+ 
         return redirect()
             ->route('marks.index')
             ->with('success', 'Marks Deleted Successfully');
     }
 }
+
+
+
+
+
+
