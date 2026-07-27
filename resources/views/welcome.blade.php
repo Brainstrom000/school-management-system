@@ -181,11 +181,59 @@
         .feature-card h3 { font-size: 16px; margin: 0 0 8px; }
         .feature-card p { font-size: 13.5px; color: #6a7086; line-height: 1.6; margin: 0; }
  
-        footer {
+        /* ---- Contact ---- */
+        .contact {
+            background: #fff;
+            padding: 80px 5%;
+            border-top: 1px solid #eceef5;
+        }
+        .contact-inner { max-width: 1100px; margin: 0 auto; }
+        .contact-head { text-align: center; max-width: 560px; margin: 0 auto 44px; }
+        .contact-head h2 { font-size: 30px; font-weight: 800; margin: 0 0 12px; color: #1b1e2b; }
+        .contact-head p { color: #6a7086; font-size: 15px; line-height: 1.7; margin: 0; }
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+        .contact-card {
             text-align: center;
-            padding: 26px 5%;
-            color: #9298ab;
-            font-size: 13px;
+            background: #f6f7fb;
+            border: 1px solid #eceef5;
+            border-radius: 14px;
+            padding: 30px 22px;
+        }
+        .contact-card .feature-icon { margin: 0 auto 16px; }
+        .contact-card h3 { font-size: 15.5px; margin: 0 0 8px; }
+        .contact-card p { font-size: 14px; color: #6a7086; margin: 0; }
+        .contact-card a { color: var(--brand); font-weight: 600; }
+ 
+        /* ---- Footer ---- */
+        footer {
+            background: #171a2b;
+            padding: 34px 5% 20px;
+        }
+        .footer-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .footer-brand { color: #fff; font-weight: 800; font-size: 16px; }
+        .footer-links { display: flex; gap: 26px; }
+        .footer-links a { color: #b7bccf; font-size: 13.5px; font-weight: 500; }
+        .footer-links a:hover { color: #fff; }
+        .footer-copy {
+            max-width: 1180px;
+            margin: 18px auto 0;
+            text-align: center;
+            color: #6c7188;
+            font-size: 12.5px;
         }
     </style>
 </head>
@@ -267,8 +315,44 @@
         </div>
     </section>
  
+    <section class="contact" id="contact">
+        <div class="contact-inner">
+            <div class="contact-head">
+                <h2>Get in touch</h2>
+                <p>Questions about admissions, records, or accessing the portal? Reach out and our team will get back to you.</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-card">
+                    <div class="feature-icon">📍</div>
+                    <h3>Visit Us</h3>
+                    <p>123 School Road, Lahore, Pakistan</p>
+                </div>
+                <div class="contact-card">
+                    <div class="feature-icon">✉️</div>
+                    <h3>Email Us</h3>
+                    <p><a href="mailto:info@schoolsystem.com">info@schoolsystem.com</a></p>
+                </div>
+                <div class="contact-card">
+                    <div class="feature-icon">📞</div>
+                    <h3>Call Us</h3>
+                    <p><a href="tel:+920000000000">+92 300 0000000</a></p>
+                </div>
+            </div>
+        </div>
+    </section>
+ 
     <footer>
-        &copy; {{ date('Y') }} {{ config('app.name', 'School Management System') }}. All rights reserved.
+        <div class="footer-inner">
+            <div class="footer-brand">{{ config('app.name', 'School Management System') }}</div>
+            <div class="footer-links">
+                <a href="#features">Features</a>
+                <a href="#contact">Contact</a>
+                @if (Route::has('login'))
+                    <a href="{{ route('login') }}">Portal Login</a>
+                @endif
+            </div>
+        </div>
+        <div class="footer-copy">&copy; {{ date('Y') }} {{ config('app.name', 'School Management System') }}. All rights reserved.</div>
     </footer>
  
 </body>
