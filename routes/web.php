@@ -24,7 +24,15 @@ use App\Http\Controllers\PaypalController;
 use App\Http\Controllers\StripeController;
 
 Route::get('/', function () {
-    return view('welcome');
+    $landingStats = \Illuminate\Support\Facades\Cache::remember('landing_stats', 300, function () {
+        return [
+            'students' => Student::count(),
+            'teachers' => Teacher::count(),
+            'classes'  => SchoolClass::count(),
+        ];
+    });
+
+    return view('welcome', $landingStats);
 });
 
 Route::get('/dashboard', function () {
